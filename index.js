@@ -1,170 +1,84 @@
+
 const onScreenObj = Sys.Desktop.ActiveWindow()
-const directLocation = {
-	enter: '[Enter]',
-	left: '[Left]',
-	right: '[Right]',
-	prtSc: '[PrtSc]',
-	f2: '[F2]',
-	numSlash: '[NumSlash]',
-	s: '^s',
-	b: '^b',
-	buyin: '[Buyin]',
-	'1firm': '[PTD-1FIRM]',
-	'2firm': '[PTD-2FIRM]'
+const keyMap = {
+  enter: '[Enter]',
+  left: '[Left]',
+  home: '[Home]',
+  prtSc: '[PrtSc]',
+  numSlash: '[NumSlash]'
 }
 
-const onDelayDirector = (direct) => {
-	Delay(1000)
-	onScreenObj.Keys(directLocation[direct])
+const onDelayKey = (key, delay = 1000) => {
+  Delay(delay)
+  onScreenObj.Keys(key)
 }
 
-const checkSideOrder = (side) => {
-	if (side === 'b' || side === 's') {
-		return side
-	}
-	return ''
+const editPrice = (price) => {
+  if (!price) {
+    Log.Message("skip edit price !!")
+    onDelayKey(keyMap.left)
+    return
+  }
+  Log.Message("editprice: " + price)
+  onDelayKey(price)
+  onDelayKey(keyMap.enter)
+  onDelayKey(keyMap.enter)
+  onDelayKey(keyMap.enter)
 }
 
-const checkPrice = (price) => {
-	if (!price) return ''
-	switch (price.toLowerCase()) {
-		case 'mkt':
-			return 'k';
-		case 'mtl':
-			return 'l';
-		case 'ato':
-			return 'a';
-		case 'atc':
-			return 'c';
-		case 'upper':
-			return '1000';
-		case 'lower':
-			return '0.01';
-		default:
-			return price
-	}
+const editVolume = (volume) => {
+  if (!volume) {
+    Log.Message("skip edit volume !!")
+    return
+  }
+  Log.Message("editvolume: " + volume)
+  onDelayKey(keyMap.enter)
+  onDelayKey(volume)
+  onDelayKey(keyMap.enter)
+  onDelayKey(keyMap.enter)
+  onDelayKey(keyMap.enter)
 }
 
-const checkConditon = (condition) => {
-	switch (condition.toLowerCase()) {
-		case 'ioc':
-			return 'i';
-		case 'fok':
-			return 'f';
-		case 'gtc':
-			return 'c';
-		case 'gtd':
-			return 'd'
-		default:
-			return ''
-	}
+const editPublish = (publish) => {
+  if (!publish) {
+    Log.Message("skip edit publish !!")
+    return
+  }
+  Log.Message("editpublish: " + publish)
+  onDelayKey(keyMap.enter)
+  onDelayKey(keyMap.enter)
+  onDelayKey(publish)
+  onDelayKey(keyMap.enter)
+  onDelayKey(keyMap.enter)
 }
 
-
-const sendNormalOrder = (side, stock, price, volume, account, publish, condition, date, nvdr, ot) => {
-	const locationSide = checkSideOrder(side.toLowerCase())
-	const alreadyPrice = checkPrice(price)
-
-	if (!locationSide || !alreadyPrice) {
-		Log.Message(`Parameter not correct => side: ${side}, price: ${price}`)
-	} else {
-		onDelayDirector(locationSide)
-
-		// key order
-		onScreenObj.Keys(stock)
-		onDelayDirector('enter')
-		onScreenObj.Keys(volume)
-		onDelayDirector('enter')
-		onScreenObj.Keys(alreadyPrice)
-		onDelayDirector('enter')
-		onScreenObj.Keys(account)
-		onDelayDirector('enter')
-
-		// condition
-		if (publish || condition || nvdr || ot) {
-			for (let i = 0; i < 4; i++) {
-				onScreenObj.Keys(directLocation.left)
-			}
-			if (publish) {
-				onScreenObj.Keys(publish)
-			}
-			onDelayDirector('enter')
-			if (condition) {
-				onScreenObj.Keys(checkPrice(condition))
-			}
-			onDelayDirector('enter')
-			if (date && condition.toLowerCase() === 'gtd') {
-				onScreenObj.Keys(date)
-			}
-			onDelayDirector('enter')
-			if (nvdr) {
-				onScreenObj.Keys(nvdr)
-			}
-			onDelayDirector('enter')
-			if (ot) {
-				onScreenObj.Keys(ot)
-			}
-			onDelayDirector('enter')
-		}
-		onDelayDirector('enter')
-
-		Log.Message(`Key Order Succes with Ordno: `)
-	}
+const cancelOrder = () => {
+  Log.Message("cancelorder")
+  onDelayKey(keyMap.prtSc)
+  onScreenObj.Keys("50010003")
+  onDelayKey(keyMap.enter)
+  onDelayKey(keyMap.numSlash)
+  onScreenObj.Keys("y")
+  onDelayKey(keyMap.enter)
 }
 
-const send2FirmAndBuyinOrder = (action, stock, price, volume, account1, account2, brokerId, controlKey) => {
-	onDelayDirector(action)
-	onScreenObj.Keys(stock)
-	onDelayDirector('enter')
-	onScreenObj.Keys(volume)
-	onDelayDirector('enter')
-	onScreenObj.Keys(price)
-	onDelayDirector('enter')
-	onScreenObj.Keys(account1)
-	onDelayDirector('enter')
-	if (nvdr1) {
-		onScreenObj.Keys(nvdr1)
-	}
-	onDelayDirector('enter')
-	onScreenObj.Keys(brokerId || '00U8')
-	onDelayDirector('enter')
-	onScreenObj.Keys(account2)
-	onDelayDirector('enter')
-	if (nvdr2) {
-		onScreenObj.Keys(nvdr2)
-	}
-	onDelayDirector('enter')
-	onScreenObj.Keys(controlKey || '')
-	onDelayDirector('enter')
-	onDelayDirector('enter')
+function changeOrderV2(no, side, editprice, editvolume, editpublish, cancelorder) {
+  Log.Message("Start change order !!")
+
+  if (editprice || editvolume || editpublish || cancelorder) {
+    onDelayKey(keyMap.home) // go to change order
+
+    editPrice(editprice)
+    editVolume(editvolume)
+    editPublish(editpublish)
+
+    if (cancelorder) {
+      cancelOrder()
+    } else {
+      Log.Message("skip cancel order !!")
+    }
+
+  } else {
+    Log.Message("Change order skip !!")
+  }
 }
-
-const send1FirmOrder = (side, stock, price, volume, account, brokerId, controlKey) => {
-	onDelayDirector('1firm')
-	onScreenObj.Keys(side)
-	onDelayDirector('enter')
-	onScreenObj.Keys(stock)
-	onDelayDirector('enter')
-	onScreenObj.Keys(price)
-
-}
-
-const changeOrder = (ordno, price, volume, publish) => {
-
-}
-
-const cancelOrder = (ordno) => {
-	onDelayDirector('prtSc')
-	onDelayDirector('left')
-	onScreenObj.Keys(ordno)
-	onDelayDirector('enter')
-	onDelayDirector('numSlash')
-	onScreenObj.Keys('y')
-	onDelayDirector('enter')
-	Log.Message(`Cancel Order => ordno: ${ordno}`)
-}
-
-const main = () => {}
-
-
-
