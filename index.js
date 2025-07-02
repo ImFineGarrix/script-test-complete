@@ -228,7 +228,9 @@ const mainOrder = (no, action, side, stock, price, volume, account, publish, con
       changeAccount(ordno, account, nvdr)
     }
   }
-  if (action.toLowerCase() === 'cancel')
+  if (action.toLowerCase() === 'cancel') {
+    cancelOrder(ordno)
+  }
 }
 
 const mainExpect = () => {}
