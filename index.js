@@ -6,7 +6,7 @@ const directLocation = {
 	prtSc: '[PrtSc]', // View Order
 	f2: '[F2]',  
 	numSlash: '[NumSlash]', // Cancel Order
-	home: '[Home]' // Change Price
+	home: '[Home]', // Change Price
 	s: '^s',
 	b: '^b',
 	buyin: '[Buyin]',
