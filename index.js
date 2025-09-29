@@ -1,7 +1,3 @@
-const url = "http://10.22.26.36/ocr/text2";
-const url_dashboard = "http://10.22.26.77:3030/api/addjsondata";
-const imagePath = "D:\\dev_cke\\drx\\images";
-const orderstatusFile = "D:\\dev_cke\\drx\\images\\order-status.png";
 const invalid = "invalid";
 const noacc = [];
 let symbol_tmp = "";
@@ -27,8 +23,10 @@ const directLocation = {
   b: '^b',
   buyin: '[Buyin]',
   firm : '~c',
+  twofirm : '[NumAsterisk]' ,
+  
   '1firm': '[PTD-2FIRM]',
-  '2firm': '[PTD-2FIRM]'
+  '2firm': '[NumAsterisk]'
 };
 
 const onDelayDirector = (direct, delay = 1000) => {
@@ -38,7 +36,51 @@ const onDelayDirector = (direct, delay = 1000) => {
 
 const checkSideOrder = (side) => (side === 'b' || side === 's') ? side : '';
 
+
+
+ 
 const checkPrice = (price, side) => {
+  if (price) {
+    switch (price.toUpperCase()) {
+      case "MKT":
+        onScreenObj.Keys("k");
+        Delay(1000);
+        break;
+      case "ATO": onScreenObj.Keys("a"); break;
+      case "ATC": onScreenObj.Keys("c"); break;
+      case "MTL": onScreenObj.Keys("l"); break;
+      case "UPPER": onScreenObj.Keys("100"); 
+      onDelayDirector("enter");
+       var exceptionMsg = getorderexcepupper();
+        if (exceptionMsg === "Price is Upper Ceiling") {
+          Log.Message("❌ เคสนี้ไม่สามารถส่งได้ (Upper Ceiling)");
+          return false;  
+        }
+        break;
+      
+      case "LOWER": onScreenObj.Keys("1"); 
+      onDelayDirector("enter");
+       var exceptionMsg = getorderexceplower();
+        if (exceptionMsg === "Price is Lower Floor") {
+          Log.Message("❌ เคสนี้ไม่สามารถส่งได้ (Lower Floor)");
+          return false;  
+        }
+      break;
+      
+      default: onScreenObj.Keys(price); break;
+    }
+    return true;
+  } else {
+    const result = getprice();
+    if (equal(result, invalid) || result === "") return false;
+    onScreenObj.Keys(result);
+    onScreenObj.Keys("[Enter]");
+    //onDelayDirector("enter");
+    return true;
+  }
+};
+
+const checkPrice1frim = (price, side) => {
   if (price) {
     switch (price.toUpperCase()) {
       case "MKT": onScreenObj.Keys("k"); break;
@@ -51,29 +93,37 @@ const checkPrice = (price, side) => {
     }
     return true;
   } else {
-    const result = getFloor(side);
+    const result = getprice1frim();
     if (equal(result, invalid) || result === "") return false;
-    onScreenObj.Keys(StrToFloat(result));
-    if (side !== "b") {
-      onScreenObj.Keys("[Enter]");
-      onScreenObj.Keys("y");
-    }
+    onScreenObj.Keys((result));
+  
     return true;
   }
+  
 };
 
 const checkCondition = (condition) => {
   if (!condition) return '';
   switch (condition.toLowerCase()) {
-    case 'ioc': return 'i';
-    case 'fok': return 'f';
+    case 'ioc':
+      onScreenObj.Keys("i");     
+      break;   
+    //  onScreenObj.Keys("[Enter]");  
+    case 'fok': 
+      onScreenObj.Keys("f");        
+      break;  
     case 'gtc': return 'c';
-    case 'gtd': return 'd';
-    default: return '';
+    case 'gtd':
+      onScreenObj.Keys("d");        
+      onScreenObj.Keys("[Enter]");   
+    default:
+      return '';
   }
 };
 
+
 const sendNormalOrder = (side, stock, price, volume, account, publish, condition, date, nvdr, ot) => {
+   onDelayDirector('f2');
   const locationSide = checkSideOrder(side.toLowerCase());
   if (!locationSide) return;
 
@@ -83,18 +133,19 @@ const sendNormalOrder = (side, stock, price, volume, account, publish, condition
   onDelayDirector("enter");
   onScreenObj.Keys(volume);
   onDelayDirector("enter");
-
   if (!checkPrice(price, side)) return;
-  onDelayDirector("enter");
+  delay(1000);
   onScreenObj.Keys(account);
   onDelayDirector("enter");
 
   if (publish || condition || date || nvdr || ot) {
-    for (let i = 0; i < 4; i++) onScreenObj.Keys(directLocation.left);
+    for (let i = 0; i < 1; i++) onScreenObj.Keys(directLocation.left);
     if (publish) onScreenObj.Keys(publish);
     onDelayDirector("enter");
+   // onDelayDirector('left');
+    //onDelayDirector("enter");
     if (condition) onScreenObj.Keys(checkCondition(condition));
-    onDelayDirector("enter");
+    //onDelayDirector("enter");
     if (date && condition.toLowerCase() === "gtd") onScreenObj.Keys(date);
     onDelayDirector("enter");
     if (nvdr) onScreenObj.Keys(nvdr);
@@ -102,32 +153,21 @@ const sendNormalOrder = (side, stock, price, volume, account, publish, condition
     if (ot) onScreenObj.Keys(ot);
     onDelayDirector("enter");
   }
+  delay(1000);
   onDelayDirector("enter");
+ // Log.Message("check enter")
 };
-
-function showOrderNo() { 
-	const onscreenObj = Sys.Desktop.ActiveWindow();
-
-	onscreenObj.Keys("[PrtSc]");
-	onscreenObj.Keys("[Left]");
-	onscreenObj.Keys(GlobalOrderNo);
-	onscreenObj.Keys("[Enter]");
-
-	Log.Message("Latest OCR Order No is:\n" + GlobalOrderNo);
-}
-
 
 
 const send1FirmAndBuyinOrder = (action, stock, price, volume, account1, account2, brokerId, controlKey, nvdr1, nvdr2) => {
- // onDelayDirector('Alt+c', 1000); 
- onDelayDirector(action);
+
     onDelayDirector('f1');
-    onDelayDirector('firm');
+   onDelayDirector('2firm');
 	onScreenObj.Keys(stock);
 	onDelayDirector('enter');
 	onScreenObj.Keys(volume);
 	onDelayDirector('enter');
-	onScreenObj.Keys(price);
+  if (!checkPrice1frim(price)) return;
 	onDelayDirector('enter');
 	onScreenObj.Keys(account1);
 	onDelayDirector('enter');
@@ -149,15 +189,19 @@ const send1FirmAndBuyinOrder = (action, stock, price, volume, account1, account2
 };
 
 const send2FirmOrder = (side, stock, price, volume, account, nvdr, brokerId, controlKey) => {
-	onDelayDirector('1firm');
+ 
+  onDelayDirector('f1');
+  onDelayDirector('firm');
 	onScreenObj.Keys(side);
 	onDelayDirector('enter');
 	onScreenObj.Keys(stock);
 	onDelayDirector('enter');
-	onScreenObj.Keys(volume);
+  onScreenObj.Keys(volume);
+  onDelayDirector('enter');
+  if (!checkPrice(price, side)) return;
+  //onScreenObj.Keys(price);
 	onDelayDirector('enter');
-	onScreenObj.Keys(price);
-	onDelayDirector('enter');
+
 
 	if (nvdr) onScreenObj.Keys(nvdr);
 	onDelayDirector('enter');
@@ -173,10 +217,27 @@ const send2FirmOrder = (side, stock, price, volume, account, nvdr, brokerId, con
 	onDelayDirector('enter');
 };
 
-const changeOrder = (ordno, price, volume, publish) => {
+const changeOrder = (ordno, price, volume, publish, side) => {
+
 	onDelayDirector('home');
-	if (price) onScreenObj.Keys(price);
-	onDelayDirector('enter');
+ 
+  onDelayDirector('right');
+   onDelayDirector('left');
+  if (price) {
+    const priceChanged = checkPrice(price, side);
+    	onDelayDirector('enter');
+    const exceptionMsg = getorderexcepchange();
+    if (exceptionMsg === "Price is Upper Ceiling") {
+      Log.Message("❌ เคสนี้ไม่สามารถส่งได้ (Price is Upper Ceiling)");
+      return false;
+        }
+  if (exceptionMsg === "SET Not Allow change limit to market price.") {
+    Log.Message("❌ เคสนี้ไม่สามารถส่งได้ (Not Allow change)");
+    return false;
+  }
+
+  onDelayDirector('enter');
+}
 
 	if (volume) onScreenObj.Keys(volume);
 	onDelayDirector('enter');
@@ -217,30 +278,65 @@ function mainOrder(
 
   if (action === 'new') {
     sendNormalOrder(side, stock, price, volume, account, publish, condition, date, nvdr, ot);
-    const oNo = getOrderno();
-    if (!oNo) {
-      Log.Error(`Failed to get OrderNo for row no ${no}.`);
-      return;
-    }
-    orderNoMap[no] = oNo;
-    Log.Message(`Mapping orderNo for no ${no}: ${oNo}`);
-
- 
+    Delay(2000)
+    const oNo = getOrdNo();
+   if (!oNo) {
+     Log.Error(`Failed to get OrderNo for row no ${no}.`);
+     return;
+   }
+   orderNoMap[no] = oNo;
+   Log.Message(`Mapping orderNo for no ${no}: ${oNo}`);
+     
     onDelayDirector('prtSc');
     onDelayDirector('left');
     onScreenObj.Keys(oNo);
     onDelayDirector('enter');
-
+    
     Check_orderStatus(no, side, "send complete");
+    onDelayDirector('f2');
   }
 
   else if (action === '1firm' || action === 'buyin') {
     send1FirmAndBuyinOrder(action, stock, price, volume, account1, account2, brokerId, controlKey, nvdr1, nvdr2);
+    Delay(1000);
+     const oNo = getOrdNo1Firm();
+      if (!oNo) {
+    Log.Error(`Failed to get 1firm OrderNo.`);
+    return;
   }
+ 
+  orderNoMap[no] = oNo;
+  Log.Message(`Mapping 1firm orderNo for no ${no}: ${oNo}`);
 
-  else if (action === '2firm') {
-    send2FirmOrder(side, stock, price, volume, account, nvdr, brokerId, controlKey);
+  onDelayDirector('prtSc');
+  onDelayDirector('left');
+  onScreenObj.Keys(oNo);
+  onDelayDirector('enter');
+  //onDelayDirector('f2');
+
+  Check_orderStatus(no, side, "send complete");
+}
+
+ else if (action === '2firm') {
+  send2FirmOrder(side, stock, price, volume, account, nvdr, brokerId, controlKey);
+  
+  const oNo = getOrdNo2Firm();
+  if (!oNo) {
+    Log.Error(`Failed to get 2firm OrderNo.`);
+    return;
   }
+  orderNoMap[no] = oNo;
+  Log.Message(`Mapping 2firm orderNo for no ${no}: ${oNo}`);
+
+  onDelayDirector('prtSc');
+  onDelayDirector('left');
+  onScreenObj.Keys(oNo);
+  onDelayDirector('enter');
+//  onDelayDirector('f2');
+
+  Check_orderStatus(no, side, "send complete");
+}
+
 
   else if (action === 'change') {
     if (!orderNoMap.hasOwnProperty(refno)) {
@@ -253,7 +349,7 @@ function mainOrder(
     onScreenObj.Keys(ordno);
     onDelayDirector('enter');
 
-    if (price || volume || publish) changeOrder(ordno, price, volume, publish);
+   if (price || volume || publish) changeOrder(ordno, price, volume, publish, side);
     if (account || nvdr) changeAccount(ordno, account, nvdr);
 
 
@@ -262,9 +358,10 @@ function mainOrder(
     onScreenObj.Keys(ordno);
     onDelayDirector('enter');
 
+   
+
     Check_orderStatus(refno, side, "change complete");
   }
-
   else if (action === 'cancel') {
     if (!orderNoMap.hasOwnProperty(refno)) {
       Log.Error(`OrderNo not found for refno ${refno}`);
@@ -279,13 +376,164 @@ function mainOrder(
     cancelOrder(ordno);
 
    
-    onDelayDirector('prtSc');
+   onDelayDirector('prtSc');
     onDelayDirector('left');
     onScreenObj.Keys(ordno);
     onDelayDirector('enter');
 
     Check_orderStatus(refno, side, "cancel complete");
   }
+}
+
+
+//  function getprice() {
+  //var SecurityInfoGrid = Aliases.javaw.MainFrame.ContentsPane.MainApplet.BMarketByPriceNasdaqScreen.GeneralSecurityInfoPanel.securitiesInfoGrid;
+ // var colCount = SecurityInfoGrid.getNumberOfColumns();
+  
+  
+  //var lastValue = aqConvert.VarToStr(SecurityInfoGrid.getGridCell_2(1, colCount - 2)).trim();
+  //Log.Message(" " + lastValue);
+  //return lastValue;
+ 
+//}
+
+function getprice() {
+  var SecurityInfoGrid = Aliases.javaw.MainFrame.ContentsPane.MainApplet.BMarketByPriceNasdaqScreen.GeneralSecurityInfoPanel.securitiesInfoGrid;
+  var colCount = SecurityInfoGrid.getNumberOfColumns();
+
+  var lastValueStr = aqConvert.VarToStr(SecurityInfoGrid.getGridCell_2(1, colCount - 2)).trim();
+  var lastValue = parseFloat(lastValueStr);  
+  var newValue = lastValue + 2; 
+
+  Log.Message("Original value: " + lastValue + ", After adding 2: " + newValue);
+  return newValue;
+}
+
+
+  function getprice1frim() {
+  var SecurityInfoGrid = Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryPutthroughScreen.AOrderEntryPutthroughPanel1.AWTObject("FloorCeilingGrid");
+   var rowCount = SecurityInfoGrid.getNumberOfRows();
+  
+  
+  var rowCount = aqConvert.VarToStr(SecurityInfoGrid.getGridCell_2(0, 1)).trim();
+  Log.Message(" " + rowCount);
+   return rowCount;
+ 
+}
+
+  
+
+//function getOrdNo() {
+ // Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntrySellScreen.AOrderEntryPanel1.AWTObject("error_grid")
+//  var SecurityInfoGrid = Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryBuyScreen.AOrderEntryPanel1.error_grid;
+//  var rowCount = SecurityInfoGrid.getNumberOfRows();
+
+//  var OrdNo = aqConvert.VarToStr(SecurityInfoGrid.getGridCell_2(0, 2)).trim();
+//   var OrdNoValue = OrdNo.split(':')[1].trim();
+//   Log.Message(" " + OrdNoValue);
+//    return OrdNoValue;
+//}
+
+function getOrdNo() {
+    var buyOrdNo = null;
+    var sellOrdNo = null;
+    var OrdNoValue = null;
+
+    // ----- Buy Grid -----
+    try {
+ //     Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryBuyScreen.AOrderEntryPanel1.error_grid
+        var buyPanel = Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryBuyScreen.AOrderEntryPanel1;
+        var buyGrid = null;
+
+        for (var retry = 0; retry < 2; retry++) {
+            try {
+                buyGrid = buyPanel.error_grid;
+                if (buyGrid.Exists && buyGrid.getNumberOfRows() > 0) break;
+            } catch (e) {}
+            Delay(500);
+        }
+
+        if (buyGrid && buyGrid.Exists && buyGrid.getNumberOfRows() > 0) {
+            var rawBuy = aqConvert.VarToStr(buyGrid.getGridCell_2(0, 2)).trim();
+            if (rawBuy.indexOf(':') !== -1) {
+                buyOrdNo = parseInt(rawBuy.split(':')[1].trim(), 10);
+                Log.Message("Buy Order No: " + buyOrdNo);
+            }
+         //   Log.Message("raw buy"+ rawBuy);
+        } else {
+            Log.Message("Buy Grid not found or empty");
+        }
+    } catch (e) {
+        Log.Message("Buy Grid error: " + e.message);
+    }
+
+    // ----- Sell Grid -----
+    try {
+        var sellPanel = Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntrySellScreen.AOrderEntryPanel1;
+        var sellGrid = null;
+
+        for (var retry = 0; retry < 2; retry++) {
+            try {
+                sellGrid = sellPanel.AWTObject("error_grid");
+                if (sellGrid.Exists && sellGrid.getNumberOfRows() > 0) break;
+            } catch (e) {}
+            Delay(500);
+        }
+
+        if (sellGrid && sellGrid.Exists && sellGrid.getNumberOfRows() > 0) {
+            var rawSell = aqConvert.VarToStr(sellGrid.getGridCell_2(0, 2)).trim();
+            if (rawSell.indexOf(':') !== -1) {
+                sellOrdNo = parseInt(rawSell.split(':')[1].trim(), 10);
+                Log.Message("Sell Order No: " + sellOrdNo);
+            }
+        } else {
+            Log.Message("Sell Grid not found or empty");
+        }
+    } catch (e) {
+        Log.Message("Sell Grid error: " + e.message);
+    }
+
+   
+    if (buyOrdNo !== null && sellOrdNo !== null) {
+        OrdNoValue = (buyOrdNo > sellOrdNo) ? buyOrdNo : sellOrdNo;
+    } else if (buyOrdNo !== null) {
+        OrdNoValue = buyOrdNo;
+    } else if (sellOrdNo !== null) {
+        OrdNoValue = sellOrdNo;
+    }
+
+    if (OrdNoValue !== null) {
+        Log.Message("✅ Latest Order No (Max): " + OrdNoValue);
+    } else {
+        Log.Warning("⚠️ No Order found in Buy or Sell grid");
+    }
+
+    return OrdNoValue;
+}
+
+
+function getOrdNo2Firm() {
+  var SecurityInfoGrid = Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryPutthroughHalfScreen.AOrderEntryPutthrougPanelHalf.errLabel;
+  var rowCount = aqConvert.VarToStr(SecurityInfoGrid.getText());
+
+  var match = rowCount.match(/Order No\s*:\s*(\d+)/);
+  var OrdNo2firm = match ? match[1] : ""; 
+      Log.Message(" " + OrdNo2firm);
+    return OrdNo2firm;
+
+}
+
+function getOrdNo1Firm() {
+  var SecurityInfoGrid = Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryPutthroughScreen.AOrderEntryPutthroughPanel1.AWTObject("MessagePanel");
+  var rawText = aqConvert.VarToStr(SecurityInfoGrid.getText());
+
+ 
+  var match = rawText.match(/Order No\s*:\s*(\d+)/);
+  var OrdNoValue = match ? match[1] : "";
+
+ 
+  Log.Message(" " + OrdNoValue);
+  return OrdNoValue;
 }
 
 
@@ -486,13 +734,13 @@ function Check_orderStatus(no, side, expect) {
         Log.Error("An error occurred during the region check: " + e.message);
         result = false;
       }
-   //   let mainApplet = Aliases.javaw.MainFrame.ContentsPane.MainApplet;
-    //  mainApplet.AViewOrderConfirmTScreen.AOrderConfirmTPanel1.OrderConfirmGrid.Drag(
-    //    1741,
-    //    49,
-    //    -1500,
-     //   -7
-    //  ); // Drag to con
+      let mainApplet = Aliases.javaw.MainFrame.ContentsPane.MainApplet;
+      mainApplet.AViewOrderConfirmTScreen.AOrderConfirmTPanel1.OrderConfirmGrid.Drag(
+        1741,
+      49,
+        -1500,
+        -7
+      ); // Drag to con
       try {
         // condition
         switch (split_expect[2]) {
@@ -611,229 +859,91 @@ function Check_orderStatus(no, side, expect) {
     result = true;
   }
 }
-
-function getFloor(side) {
-  const floorFile = "D:\\dev_cke\\drx\\images\\floor-price.png";   
-
-  let region;
-  if (side === "b") {
-    region = Regions.CreateRegionInfo(
-      Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryBuyScreen.AOrderEntryPanel1,
-      108,
-      70,
-      56,
-      34,
-      false
-    );
-  } else {
-    region = Regions.CreateRegionInfo(
-      Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntrySellScreen.AOrderEntryPanel1,
-      106,
-      70,
-      62,
-      32,
-      false
-    );
-  }
-  
-  var pic = region.Picture();
-  Log.Picture(pic, "image floor price");
-  pic.SaveToFile(floorFile);
-
-  const b = getByteFromFile(floorFile);
-  const aqHttpResponse = callApi(b, "FLOOR");
-  deleteFile(floorFile);
-
-  const obj = JSON.parse(aqHttpResponse.Text);
-
-  let price = invalid;
-  if (aqString.Compare(obj.result, "true", false) === 0) {
-    price = cleanNumber(obj.text).split("\n");
-  }
-  return price;
-}
-
-
-function getOrderno(retry = true) {
-  try {
-    const timestamp = new Date().getTime();
-    const tempFile = `D:\\imp_pat\\image\\floor-price-${timestamp}.png`;
-
-    var region = Regions.CreateRegionInfo(
-      Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryBuyScreen.AOrderEntryPanel1,
-      765, 68, 60, 35,
-      false
-    );
-
-    var pic = region.Picture();
-    pic.SaveToFile(tempFile);
-    Log.Message("Saved orderNo image to: " + tempFile);
-    Log.Picture(pic, "Captured OrderNo region");
-
-    const b = getByteFromFile(tempFile);
-    const aqHttpResponse = callApi(b, "Floor");
-    Log.Message("OCR API Response: " + aqHttpResponse.Text);
-
-    const obj = JSON.parse(aqHttpResponse.Text);
-    let orderNo = "invalid";
-
-    if (aqString.Compare(obj.result, "true", false) === 0 && obj.text.trim() !== "") {
-      Log.Message("Raw OCR Text: " + obj.text);
-      const cleaned = cleanNumber(obj.text);
-      Log.Message("Cleaned OCR Text: " + cleaned);
-      orderNo = cleaned.split("\n")[0];
-      Log.Message("✅ OCR read orderNo: " + orderNo);
-      return orderNo;
-    } else {
-      Log.Warning("⚠️ OCR ไม่ได้เลขมา (text ว่าง)");
-    }
-
  
-    if (retry) {
-      Log.Warning("🔁 ลอง OCR ใหม่อีกครั้ง...");
-      Delay(1000);
-      return getOrderno(false);
+ 
+  
+
+//pass
+function getorderexcepupper(){
+    var Securityexception = Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryBuyScreen.AOrderEntryPanel1.error_grid;
+
+    if (Securityexception != null) {
+        var rowcount = aqConvert.VarToStr(Securityexception.getGridCell_2(0, 2)).trim();
+        Log.Message("" + rowcount);
+
+        if (rowcount === "Price is Upper Ceiling") {
+            Log.Message("เคสนี้ไม่สามารถส่งได้");
+            
+        }
+
+        return rowcount;
+    } else {
+        Log.Message("Sell Grid not found or empty");
+        return null;
     }
-
-    Log.Error("❌ Failed to get valid OrderNo from OCR (ว่างทั้งสองรอบ)");
-    return "";
-  } catch (err) {
-    Log.Error("❌ getOrderno() error: " + err.message);
-    return "";
-  }
 }
 
 
-function getByteFromFile(file) {
-  f = aqFile.OpenBinaryFile(file, aqFile.faRead);
-  var b = f.ReadBytes();
-  f.Close();
-  return b;
-}
 
-function deleteFile(file) {
-  aqFile.Delete(file);
-}
-function callApi(b, p) {
-  var aqHttpRequest = aqHttp.CreatePostRequest(url);
-  aqHttpRequest.SetHeader("Content-Type", "image/png");
-  aqHttpRequest.SetHeader("processing", p);
-  var aqHttpResponse = aqHttpRequest.Send(b);
-  httpResponse(aqHttpResponse);
-  return aqHttpResponse;
-}
+//pass
+function getorderexceplower(){
+    var Securityexception = Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryBuyScreen.AOrderEntryPanel1.error_grid;
 
-function sendtestresult(requestBody) {
-  var aqHttpRequest = aqHttp.CreatePostRequest(url_dashboard);
-  aqHttpRequest.SetHeader("Content-Type", "application/json");
-  var aqHttpResponse = aqHttpRequest.Send(requestBody);
-  Log.Message(requestBody);
-  //httpResponse(aqHttpResponse);
-  return aqHttpResponse;
-}
-function httpResponse(aqHttpResponse) {
-  // Log.Message(aqHttpResponse.AllHeaders); // All headers
-  // Log.Message(aqHttpResponse.GetHeader("Content-Type")); // A specific header
-  // Log.Message(aqHttpResponse.StatusCode); // A status code
-  // Log.Message(aqHttpResponse.StatusText); // A status text
-  Log.Message(aqHttpResponse.Text); // A response body
-}
+    if (Securityexception != null) {
+        var rowcount = aqConvert.VarToStr(Securityexception.getGridCell_2(0, 2)).trim();
+        Log.Message("" + rowcount);
 
-function cleanNumber(text) {
-  const newtext = text.replace(",", "");
-  return newtext;
-}
+        if (rowcount === "Price is Lower Floor") {
+            Log.Message("เคสนี้ไม่สามารถส่งได้");
+            
+        }
 
-function keyfloor() {
-  var onscreenObj = Sys.Desktop.ActiveWindow();
-  onscreenObj.Keys("8"); // ctrl+b btn
-}
-
-function ScreenShot_F2(symbol) {
-  if (symbol_tmp != symbol) {
-    let onscreenObj = Sys.Desktop.ActiveWindow();
-    let javaw = Aliases.javaw;
-    let mainApplet = javaw.MainFrame.ContentsPane.MainApplet;
-    mainApplet.Keys("[F2]");
-    mainApplet.BInputScreen.InputLinePanel1.filterTextField.filterTextField.Keys(symbol);
-    onscreenObj.Keys("[Enter]");
-    var pic_f2 = Regions.CreateRegionInfo(Aliases.javaw.MainFrame.ContentsPane.MainApplet, 0, 2, 1920, 1005, false);
-    var pic = pic_f2.Picture();
-    let dd = today.getDate();
-    let mm = Number(today.getMonth()+1);
-    if (String(dd).length === 1) {
-      dd = "0" + dd;
+        return rowcount;
+    } else {
+        Log.Message("Sell Grid not found or empty");
+        return null;
     }
-    if (String(mm).length === 1) {
-      mm = "0" + mm;
-    } 
-    let datepic = dd + "_" + mm + "_" + today.getFullYear();
-    let pic_path = "D:\\dev_cke\\log\\2Open1\\Log_" + datepic + "\\MarketByPrice-Pic\\" + symbol + ".png";
-    Log.Message(pic_path);
-    pic.SaveToFile(pic_path);
-    symbol_tmp = symbol;
-  } else {
-    symbol_tmp = symbol;
-  }
 }
 
-function ScreenShot_Vieworder()
-{
-    let onscreenObj = Sys.Desktop.ActiveWindow();
-    let javaw = Aliases.javaw;
-    let panel = javaw.LoginDialog.ContentsPane;
-    let mainFrame = javaw.MainFrame;
-    let mainApplet = mainFrame.ContentsPane.MainApplet;
-    let AViewOrderConfirmTScreen = mainApplet.AViewOrderConfirmTScreen;
-    let AOrderConfirmTPanel = AViewOrderConfirmTScreen.AOrderConfirmTPanel1;
-    let dd = today.getDate();
-    let mm = Number(today.getMonth()+1);
-    if (String(dd).length === 1) {
-      dd = "0" + dd;
+//pass
+function getorderexcepato(){
+    var Securityexception = Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryBuyScreen.AOrderEntryPanel1.error_grid;
+
+    if (Securityexception != null) {
+        var rowcount = aqConvert.VarToStr(Securityexception.getGridCell_2(0, 2)).trim();
+        Log.Message("" + rowcount);
+
+        if (rowcount === "Cannot trade ATO price in MKT open period") {
+            Log.Message("เคสนี้ไม่สามารถส่งได้");
+            
+        }
+
+        return rowcount;
+    } else {
+        Log.Message("Sell Grid not found or empty");
+        return null;
     }
-    if (String(mm).length === 1) {
-      mm = "0" + mm;
-    } 
-    let datepic = dd + "_" + mm + "_" + today.getFullYear();
-    for (let i = 0; i < noacc.length; i++) {
-      Log.Message("dataaaaaaaaaaaa" + noacc[i].account +"/"+ noacc[i].no);
-     // onscreenObj.Keys("[PrtSc]");
-       onscreenObj.Keys(noacc[i].account);
-        onscreenObj.Keys("[Enter]");
-        onscreenObj.Keys("^b");
-      for (let y = 0; y < Math.ceil(noacc[i].no/7); y++) {
-        var Vieworder = Regions.CreateRegionInfo(Aliases.javaw.MainFrame.ContentsPane.MainApplet, 0, 2, 1920, 1005, true)
-    var pic = Vieworder.Picture();
-    let dirdatepic = "D:\\dev_cke\\log\\2Open1\\Log_" + datepic + "\\Vieworder-Pic\\" + noacc[i].account + y + "_S-Vieworder-Pic.png";
-    Log.Message(dirdatepic);
-    pic.SaveToFile(dirdatepic);
-    Aliases.javaw.MainFrame.ContentsPane.MainApplet.AViewOrderConfirmTScreen.AOrderConfirmTPanel1.OrderConfirmGrid.Drag(1531, 50, -1371, 10);
-    var Vieworder2 = Regions.CreateRegionInfo(Aliases.javaw.MainFrame.ContentsPane.MainApplet, 0, 2, 1920, 1005, true)
-    var pic2 = Vieworder2.Picture();
-    let dirdatepic2 = "D:\\dev_cke\\log\\2Open1\\Log_" + datepic + "\\Vieworder-Pic\\" + noacc[i].account + y + "_E-Vieworder-Pic.png";
-    Log.Message(dirdatepic2);
-    pic2.SaveToFile(dirdatepic2);
-    Aliases.javaw.MainFrame.ContentsPane.MainApplet.AViewOrderConfirmTScreen.AOrderConfirmTPanel1.OrderConfirmGrid.Drag(1310, 151, 1536, 4);
-    AViewOrderConfirmTScreen.Panel.NextButton.Click(37, 15);
-      
-    } 
-     }
 }
 
-function Test1()
-{
-  Regions.AOrderEntryPanel1.Check(Regions.CreateRegionInfo(Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryBuyScreen.AOrderEntryPanel1, 759, 68, 108, 36, false));
-}
 
-function Test2()
-{
-  Regions.AOrderEntryPanel11.Check(Regions.CreateRegionInfo(Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryBuyScreen.AOrderEntryPanel1, 757, 68, 50, 35, false));
-}
 
-function Test3()
-{
-  let explorer = Aliases.explorer;
-  explorer.wndTaskListThumbnailWnd.Click(526, 104);
-  explorer.wndimage.Click(574, 180);
-  Regions.AOrderEntryPanel12.Check(Regions.CreateRegionInfo(Aliases.javaw.MainFrame.ContentsPane.MainApplet.AOrderEntryBuyScreen.AOrderEntryPanel1, 759, 71, 66, 31, false));
+//pass
+function getorderexcepchange() {
+    var Securityexception = Aliases.javaw.MainFrame.ContentsPane.MainApplet.AChangePriceScreen.AChangePricePanel.ErrorMessageLabel;
+
+    if (Securityexception != null) {
+        var rowcount = aqConvert.VarToStr(Securityexception.getText()).trim();
+        Log.Message("ข้อความจากระบบ: " + rowcount);
+
+        if (rowcount === "Price is Upper Ceiling") {
+            Log.Message("❌ เคสนี้ไม่สามารถส่งได้ (Price is Upper Ceiling)");
+        } else if (rowcount === "SET Not Allow change limit to market price.") {
+            Log.Message("❌ เคสนี้ไม่สามารถส่งได้ (Not Allow change limit to market price)");
+        }
+
+        return rowcount;
+    } else {
+        Log.Message("❌ ไม่พบ ErrorMessageLabel หรือไม่มีข้อความแสดง");
+        return null;
+    }
 }
